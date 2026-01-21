@@ -18,6 +18,8 @@ def list_projects(
     """
     List all projects in a workspace.
     
+    Based on: GET /api/v1/projects/?workspace={workspace_id}
+    
     Args:
         client: HTTP client instance
         workspace_id: Workspace ID to list projects from
@@ -27,18 +29,19 @@ def list_projects(
     
     Raises:
         ProlificAPIError: On API errors
+    
+    Example:
+        >>> projects = list_projects(client, "workspace_id")
+        >>> for project in projects:
+        ...     print(f"{project.title}: {len(project.users)} users")
     """
     response = client.get(
         "/api/v1/projects/",
         params={"workspace": workspace_id}
     )
     
-    if "results" in response:
-        projects = [ProlificProject(**project) for project in response["results"]]
-    else:
-        projects = [ProlificProject(**project) for project in response] if isinstance(response, list) else []
-    
-    return projects
+    project_response = ProjectListResponse(**response)
+    return project_response.results
 
 
 def get_project(
@@ -47,6 +50,8 @@ def get_project(
 ) -> ProlificProject:
     """
     Get a specific project by ID.
+    
+    Based on: GET /api/v1/projects/{project_id}/
     
     Args:
         client: HTTP client instance
@@ -58,6 +63,11 @@ def get_project(
     Raises:
         ProlificAPIError: On API errors
         ProlificNotFoundError: If project doesn't exist
+    
+    Example:
+        >>> project = get_project(client, "project_id")
+        >>> print(f"Title: {project.title}")
+        >>> print(f"Created: {project.created_at}")
     """
     response = client.get(f"/api/v1/projects/{project_id}/")
     return ProlificProject(**response)
@@ -68,17 +78,19 @@ def create_project(
     workspace_id: str,
     title: str,
     description: Optional[str] = None,
-    naive_id: Optional[str] = None
+    naivety_distribution_rate: Optional[int] = None
 ) -> ProlificProject:
     """
     Create a new project.
     
+    Based on: POST /api/v1/projects/
+    
     Args:
         client: HTTP client instance
         workspace_id: Workspace ID to create project in
-        title: Project title
+        title: Project title (1-255 characters)
         description: Optional project description
-        naive_id: Optional naive ID for tracking
+        naivety_distribution_rate: Optional naivety distribution rate (0-100)
     
     Returns:
         Created ProlificProject instance
@@ -86,12 +98,22 @@ def create_project(
     Raises:
         ProlificAPIError: On API errors
         ProlificValidationError: If validation fails
+    
+    Example:
+        >>> project = create_project(
+        ...     client=client,
+        ...     workspace_id="workspace_id",
+        ...     title="User Research Study 2024",
+        ...     description="Researching user behavior patterns",
+        ...     naivety_distribution_rate=50
+        ... )
+        >>> print(f"Created project: {project.id}")
     """
     request = ProjectCreateRequest(
         workspace=workspace_id,
         title=title,
         description=description,
-        naive_id=naive_id
+        naivety_distribution_rate=naivety_distribution_rate
     )
     
     response = client.post(
@@ -102,18 +124,25 @@ def create_project(
     return ProlificProject(**response)
 
 
-def patch_project(
+def update_project(
     client: ProlificHttpClient,
     project_id: str,
-    patch: Dict[str, Any]
+    title: Optional[str] = None,
+    description: Optional[str] = None,
+    naivety_distribution_rate: Optional[int] = None
 ) -> ProlificProject:
     """
     Update an existing project.
     
+    Based on: PATCH /api/v1/projects/{project_id}/
+    Only provided fields are updated.
+    
     Args:
         client: HTTP client instance
         project_id: Project ID to update
-        patch: Dictionary of fields to update (e.g., {"title": "New Title"})
+        title: New title (optional)
+        description: New description (optional)
+        naivety_distribution_rate: New naivety distribution rate (optional, 0-100)
     
     Returns:
         Updated ProlificProject instance
@@ -121,8 +150,37 @@ def patch_project(
     Raises:
         ProlificAPIError: On API errors
         ProlificNotFoundError: If project doesn't exist
+        ProlificValidationError: If validation fails
+    
+    Example:
+        >>> # Update title only
+        >>> project = update_project(
+        ...     client=client,
+        ...     project_id="project_id",
+        ...     title="Updated Title"
+        ... )
+        >>> 
+        >>> # Update multiple fields
+        >>> project = update_project(
+        ...     client=client,
+        ...     project_id="project_id",
+        ...     title="New Title",
+        ...     description="New description",
+        ...     naivety_distribution_rate=75
+        ... )
     """
-    update_request = ProjectUpdateRequest(**patch)
+    update_data = {}
+    if title is not None:
+        update_data["title"] = title
+    if description is not None:
+        update_data["description"] = description
+    if naivety_distribution_rate is not None:
+        update_data["naivety_distribution_rate"] = naivety_distribution_rate
+    
+    if not update_data:
+        return get_project(client, project_id)
+    
+    update_request = ProjectUpdateRequest(**update_data)
     
     response = client.patch(
         f"/api/v1/projects/{project_id}/",
@@ -131,38 +189,6 @@ def patch_project(
     
     return ProlificProject(**response)
 
-
-def update_project(
-    client: ProlificHttpClient,
-    project_id: str,
-    title: Optional[str] = None,
-    description: Optional[str] = None
-) -> ProlificProject:
-    """
-    Update project with specific fields (convenience method).
-    
-    Args:
-        client: HTTP client instance
-        project_id: Project ID to update
-        title: New title (optional)
-        description: New description (optional)
-    
-    Returns:
-        Updated ProlificProject instance
-    
-    Raises:
-        ProlificAPIError: On API errors
-    """
-    patch = {}
-    if title is not None:
-        patch["title"] = title
-    if description is not None:
-        patch["description"] = description
-    
-    if not patch:
-        return get_project(client, project_id)
-    
-    return patch_project(client, project_id, patch)
 
 
 def find_project_by_title(
@@ -180,6 +206,11 @@ def find_project_by_title(
     
     Returns:
         ProlificProject if found, None otherwise
+    
+    Example:
+        >>> project = find_project_by_title(client, "ws_id", "My Project")
+        >>> if project:
+        ...     print(f"Found: {project.id}")
     """
     projects = list_projects(client, workspace_id)
     
@@ -188,3 +219,27 @@ def find_project_by_title(
             return project
     
     return None
+
+
+def delete_project(
+    client: ProlificHttpClient,
+    project_id: str
+) -> None:
+    """
+    Delete a project.
+    
+    Note: This may not be supported by the API. Use with caution.
+    Based on: DELETE /api/v1/projects/{project_id}/
+    
+    Args:
+        client: HTTP client instance
+        project_id: Project ID to delete
+    
+    Raises:
+        ProlificAPIError: On API errors
+        ProlificNotFoundError: If project doesn't exist
+    
+    Example:
+        >>> delete_project(client, "project_id")
+    """
+    client.delete(f"/api/v1/projects/{project_id}/")
