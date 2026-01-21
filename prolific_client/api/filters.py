@@ -1,7 +1,16 @@
 """
 API operations for Prolific filters and filter sets.
+
+Based on Prolific API documentation:
+- GET /api/v1/filters/?workspace_id={workspace_id}
+- GET /api/v1/filters/{filter_id}/distribution/?workspace_id={workspace_id}
+- GET /api/v1/workspaces/{workspace_id}/filter-sets/
+- GET /api/v1/filter-sets/{filter_set_id}/
+- POST /api/v1/filter-sets/
+- PATCH /api/v1/filter-sets/{filter_set_id}/
 """
 
+from pytest import param
 from typing import List, Dict, Any, Optional
 from ..http import ProlificHttpClient
 from ..models.filters import (
@@ -36,6 +45,7 @@ def list_filters(client: ProlificHttpClient, workspace_id: str) -> List[Prolific
     params = {"workspace_id": workspace_id}
     response = client.get("/api/v1/filters/", params=params)
 
+    # Parse response
     filter_response = FilterListResponse(**response)
     return filter_response.results
 
@@ -72,12 +82,14 @@ def get_filter_distribution(
 
 
 def list_filter_sets(
-    client: ProlificHttpClient, workspace_id: str
+    client: ProlificHttpClient,
+    workspace_id: Optional[str] = None,
+    organisation_id: Optional[str] = None,
 ) -> List[ProlificFilterSet]:
     """
     List all filter sets in a workspace.
 
-    Based on: GET /api/v1/workspaces/{workspace_id}/filter-sets/
+    Based on: GET /api/v1/filter-sets/
 
     Args:
         client: HTTP client instance
@@ -91,13 +103,24 @@ def list_filter_sets(
         >>> for fs in filter_sets:
         ...     print(f"{fs.name} (v{fs.version})")
     """
-    response = client.get(f"/api/v1/workspaces/{workspace_id}/filter-sets/")
+    params = {}
 
+    if workspace_id is not None:
+        params["workspace_id"] = workspace_id
+
+    if organisation_id is not None:
+        params["organisation_id"] = organisation_id
+
+    response = client.get(f"/api/v1/filter-sets/", params=params)
+
+    # Parse response
     filter_set_response = FilterSetListResponse(**response)
     return filter_set_response.results
 
 
-def get_filter_set(client: ProlificHttpClient, filter_set_id: str) -> ProlificFilterSet:
+def get_filter_set(
+    client: ProlificHttpClient, filter_set_id: str, version_number: Optional[int] = None
+) -> ProlificFilterSet:
     """
     Get a specific filter set by ID.
 
@@ -115,12 +138,23 @@ def get_filter_set(client: ProlificHttpClient, filter_set_id: str) -> ProlificFi
         >>> print(f"Filters: {len(filter_set.filters)}")
         >>> print(f"Estimated reach: {filter_set.estimated_participants}")
     """
-    response = client.get(f"/api/v1/filter-sets/{filter_set_id}/")
+    params = {}
+
+    if version_number is not None:
+        params["version_number"] = version_number
+
+    response = client.get(
+        f"/api/v1/filter-sets/{filter_set_id}/", params=params if params else None
+    )
     return ProlificFilterSet(**response)
 
 
 def create_filter_set(
-    client: ProlificHttpClient, name: str, workspace_id: str, filters: List[FilterValue]
+    client: ProlificHttpClient,
+    name: Optional[str] = None,
+    workspace_id: Optional[str] = None,
+    organisation_id: Optional[str] = None,
+    filters: Optional[List[FilterValue]] = None,
 ) -> ProlificFilterSet:
     """
     Create a new filter set.
@@ -161,8 +195,9 @@ def create_filter_set(
         ... )
         >>> print(f"Created filter set: {filter_set.id} (v{filter_set.version})")
     """
+    # Validate payload
     request = FilterSetCreateRequest(
-        name=name, workspace_id=workspace_id, filters=filters
+        name=name, workspace_id=workspace_id, filters=filters, organisation_id=organisation_id
     )
 
     response = client.post(
@@ -199,33 +234,36 @@ def patch_filter_set(
         ProlificValidationError: If validation fails
 
     Example:
-        >>> # Patch just the name
-        >>> patched = patch_filter_set(
+        >>> # Update just the name
+        >>> updated = patch_filter_set(
         ...     client=client,
         ...     filter_set_id="filter_set_id",
         ...     name="Updated Name"
         ... )
-        >>> print(f"Version incremented: {patched.version}")
+        >>> print(f"Version incremented: {updated.version}")
         >>>
-        >>> # Patch filters
+        >>> # Update filters
         >>> new_filters = [
         ...     FilterValue(
         ...         filter_id="age_range_filter_id",
         ...         range_value={"min": 30, "max": 50}
         ...     )
         ... ]
-        >>> patched = patch_filter_set(
+        >>> updated = patch_filter_set(
         ...     client=client,
         ...     filter_set_id="filter_set_id",
         ...     filters=new_filters
         ... )
     """
-    patch_data = {}
+    # Build update payload
+    update_data = {}
     if name is not None:
-        patch_data["name"] = name
+        update_data["name"] = name
     if filters is not None:
-        patch_data["filters"] = filters
-    update_request = FilterSetUpdateRequest(**patch_data)
+        update_data["filters"] = filters
+
+    # Validate payload
+    update_request = FilterSetUpdateRequest(**update_data)
 
     response = client.patch(
         f"/api/v1/filter-sets/{filter_set_id}/",
@@ -233,6 +271,9 @@ def patch_filter_set(
     )
 
     return ProlificFilterSet(**response)
+
+
+# Convenience methods
 
 
 def find_filter_set_by_name(
@@ -256,37 +297,14 @@ def find_filter_set_by_name(
     """
     filter_sets = list_filter_sets(client, workspace_id)
 
+    # Find all matching by name, return the one with highest version
     matches = [fs for fs in filter_sets if fs.name == name]
 
     if not matches:
         return None
 
+    # Return the latest version
     return max(matches, key=lambda fs: fs.version)
-
-
-def find_filters_by_tag(
-    client: ProlificHttpClient, workspace_id: str, filter_tag: str
-) -> List[ProlificFilter]:
-    """
-    Find filters by tag/category.
-
-    Args:
-        client: HTTP client instance
-        workspace_id: Workspace ID
-        filter_tag: Filter tag to search for (e.g., "demographics", "location")
-
-    Returns:
-        List of matching ProlificFilter instances
-
-    Example:
-        >>> demographic_filters = find_filters_by_tag(
-        ...     client, "workspace_id", "demographics"
-        ... )
-        >>> for f in demographic_filters:
-        ...     print(f"{f.title}: {f.description}")
-    """
-    all_filters = list_filters(client, workspace_id)
-    return [f for f in all_filters if f.filter_tag == filter_tag]
 
 
 def estimate_participant_pool(
@@ -316,9 +334,62 @@ def estimate_participant_pool(
         >>> estimate = estimate_participant_pool(client, "ws_id", filters)
         >>> print(f"Estimated reach: {estimate} participants")
     """
+    # Create temporary filter set
     temp_name = f"_temp_estimate_{hash(str(filters))}"
     filter_set = create_filter_set(
         client=client, name=temp_name, workspace_id=workspace_id, filters=filters
     )
 
     return filter_set.estimated_participants or 0
+
+
+def get_custom_groups(
+    client: ProlificHttpClient, workspace_id: str
+) -> List[ProlificFilter]:
+    """
+    Get all custom group filters.
+
+    Custom groups are participant groups you've created.
+    Uses filter_tag="custom-group" query parameter.
+
+    Args:
+        client: HTTP client instance
+        workspace_id: Workspace ID
+
+    Returns:
+        List of custom group filters
+
+    Example:
+        >>> custom_groups = get_custom_groups(client, "workspace_id")
+        >>> for group in custom_groups:
+        ...     print(f"{group.title}: {group.description}")
+    """
+    params = {"workspace_id": workspace_id, "filter_tag": "custom-group"}
+    response = client.get("/api/v1/filters/", params=params)
+    filter_response = FilterListResponse(**response)
+    return filter_response.results
+
+
+def search_filters_by_title(
+    client: ProlificHttpClient, title_query: str, workspace_id: str
+) -> List[ProlificFilter]:
+    """
+    Search filters by title (case-insensitive substring match).
+
+    Args:
+        client: HTTP client instance
+        title_query: Search query for filter title
+        workspace_id: Workspace ID
+
+    Returns:
+        List of matching filters
+
+    Example:
+        >>> # Find all age-related filters
+        >>> age_filters = search_filters_by_title(client, "age", "workspace_id")
+        >>> for f in age_filters:
+        ...     print(f.title)
+    """
+    all_filters = list_filters(client, workspace_id)
+    query_lower = title_query.lower()
+    return [f for f in all_filters if query_lower in f.title.lower()]
