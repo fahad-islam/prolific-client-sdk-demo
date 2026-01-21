@@ -28,34 +28,12 @@ logger = logging.getLogger(__name__)
 
 
 class ProlificHttpClient:
-    """
-    HTTP client for Prolific API with retry logic and observability.
-    
-    Features:
-    - Automatic retries for transient failures (429, 5xx)
-    - Exponential backoff
-    - Correlation ID tracking
-    - Structured logging with credential redaction
-    - Typed error handling
-    """
     
     def __init__(self, config: ProlificConfig):
-        """
-        Initialize HTTP client.
-        
-        Args:
-            config: Prolific configuration
-        """
         self.config = config
         self.session = self._create_session()
     
     def _create_session(self) -> requests.Session:
-        """
-        Create requests session with retry configuration.
-        
-        Returns:
-            Configured requests.Session
-        """
         session = requests.Session()
         
         # Configure retry strategy
@@ -73,15 +51,6 @@ class ProlificHttpClient:
         return session
     
     def _calculate_backoff(self, attempt: int) -> float:
-        """
-        Calculate exponential backoff delay.
-        
-        Args:
-            attempt: Current retry attempt (0-indexed)
-        
-        Returns:
-            Delay in seconds
-        """
         # Exponential backoff: 1s, 2s, 4s, 8s, ...
         base_delay = 1.0
         max_delay = 60.0
@@ -95,16 +64,6 @@ class ProlificHttpClient:
         return delay + jitter
     
     def _should_retry(self, error: Exception, attempt: int) -> bool:
-        """
-        Determine if request should be retried.
-        
-        Args:
-            error: Exception that occurred
-            attempt: Current attempt number (0-indexed)
-        
-        Returns:
-            True if should retry, False otherwise
-        """
         if attempt >= self.config.max_retries:
             return False
         
@@ -122,15 +81,6 @@ class ProlificHttpClient:
         return False
     
     def _redact_sensitive_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Redact sensitive information from data for logging.
-        
-        Args:
-            data: Dictionary that may contain sensitive data
-        
-        Returns:
-            Dictionary with sensitive fields redacted
-        """
         if not data:
             return data
         
@@ -151,24 +101,6 @@ class ProlificHttpClient:
         json: Optional[Dict[str, Any]] = None,
         correlation_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """
-        Make HTTP request to Prolific API with retry logic.
-        
-        Args:
-            method: HTTP method
-            path: API path (e.g., "/api/v1/workspaces/")
-            params: Query parameters
-            json: JSON request body
-            correlation_id: Optional correlation ID for tracking
-        
-        Returns:
-            Response JSON data
-        
-        Raises:
-            ProlificAPIError: On API errors
-            ProlificConnectionError: On connection failures
-            ProlificTimeoutError: On timeout
-        """
         if correlation_id is None:
             correlation_id = str(uuid.uuid4())
         
@@ -304,29 +236,22 @@ class ProlificHttpClient:
         raise last_error
     
     def get(self, path: str, params: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
-        """Convenience method for GET requests."""
         return self._request("GET", path, params=params, **kwargs)
     
     def post(self, path: str, json: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
-        """Convenience method for POST requests."""
         return self._request("POST", path, json=json, **kwargs)
     
     def patch(self, path: str, json: Optional[Dict[str, Any]] = None, **kwargs) -> Dict[str, Any]:
-        """Convenience method for PATCH requests."""
         return self._request("PATCH", path, json=json, **kwargs)
     
     def delete(self, path: str, **kwargs) -> Dict[str, Any]:
-        """Convenience method for DELETE requests."""
         return self._request("DELETE", path, **kwargs)
     
     def close(self):
-        """Close the HTTP session."""
         self.session.close()
     
     def __enter__(self):
-        """Context manager entry."""
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit."""
         self.close()

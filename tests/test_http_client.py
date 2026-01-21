@@ -24,7 +24,6 @@ from prolific_client.errors import (
 
 @pytest.fixture
 def config():
-    """Create test configuration."""
     return ProlificConfig(
         base_url="https://api.prolific.test",
         token="test-token-123",
@@ -36,28 +35,23 @@ def config():
 
 @pytest.fixture
 def client(config):
-    """Create test client."""
     return ProlificHttpClient(config)
 
 
 class TestProlificHttpClient:
-    """Tests for ProlificHttpClient."""
     
     def test_client_initialization(self, config):
-        """Test client initialization."""
         client = ProlificHttpClient(config)
         assert client.config == config
         assert client.session is not None
     
     def test_context_manager(self, config):
-        """Test client as context manager."""
         with ProlificHttpClient(config) as client:
             assert client.session is not None
         # Session should be closed after exiting context
     
     @patch('requests.Session.request')
     def test_successful_get_request(self, mock_request, client):
-        """Test successful GET request."""
         # Mock successful response
         mock_response = Mock()
         mock_response.status_code = 200
@@ -72,7 +66,6 @@ class TestProlificHttpClient:
     
     @patch('requests.Session.request')
     def test_successful_post_request(self, mock_request, client):
-        """Test successful POST request."""
         mock_response = Mock()
         mock_response.status_code = 201
         mock_response.json.return_value = {"id": "456", "created": True}
@@ -86,7 +79,6 @@ class TestProlificHttpClient:
     
     @patch('requests.Session.request')
     def test_404_error(self, mock_request, client):
-        """Test 404 error handling."""
         mock_response = Mock()
         mock_response.status_code = 404
         mock_response.json.return_value = {"error": "Not found"}
@@ -100,7 +92,6 @@ class TestProlificHttpClient:
     
     @patch('requests.Session.request')
     def test_401_authentication_error(self, mock_request, client):
-        """Test 401 authentication error."""
         mock_response = Mock()
         mock_response.status_code = 401
         mock_response.json.return_value = {"error": "Unauthorized"}
@@ -115,7 +106,6 @@ class TestProlificHttpClient:
     @patch('requests.Session.request')
     @patch('time.sleep')  # Mock sleep to speed up tests
     def test_rate_limit_retry(self, mock_sleep, mock_request, client):
-        """Test retry on rate limit (429)."""
         # First call returns 429, second call succeeds
         mock_response_429 = Mock()
         mock_response_429.status_code = 429
@@ -138,7 +128,6 @@ class TestProlificHttpClient:
     @patch('requests.Session.request')
     @patch('time.sleep')
     def test_server_error_retry(self, mock_sleep, mock_request, client):
-        """Test retry on server error (5xx)."""
         # First call returns 500, second call succeeds
         mock_response_500 = Mock()
         mock_response_500.status_code = 500
@@ -160,7 +149,6 @@ class TestProlificHttpClient:
     @patch('requests.Session.request')
     @patch('time.sleep')
     def test_max_retries_exceeded(self, mock_sleep, mock_request, client):
-        """Test max retries exceeded."""
         # All calls return 500
         mock_response = Mock()
         mock_response.status_code = 500
@@ -176,7 +164,6 @@ class TestProlificHttpClient:
     
     @patch('requests.Session.request')
     def test_timeout_error(self, mock_request, client):
-        """Test timeout error."""
         mock_request.side_effect = requests.exceptions.Timeout("Connection timeout")
         
         with pytest.raises(ProlificTimeoutError):
@@ -184,14 +171,12 @@ class TestProlificHttpClient:
     
     @patch('requests.Session.request')
     def test_connection_error(self, mock_request, client):
-        """Test connection error."""
         mock_request.side_effect = requests.exceptions.ConnectionError("Failed to connect")
         
         with pytest.raises(ProlificConnectionError):
             client.get("/api/v1/test/")
     
     def test_backoff_calculation(self, client):
-        """Test exponential backoff calculation."""
         # Test backoff values (without jitter for predictability)
         backoffs = []
         for attempt in range(5):
@@ -204,7 +189,6 @@ class TestProlificHttpClient:
         assert 3.0 <= backoffs[2] <= 5.0    # ~4s ±25%
     
     def test_credential_redaction(self, client):
-        """Test credential redaction in logs."""
         data = {
             "token": "secret-token",
             "api_key": "secret-key",
@@ -219,7 +203,6 @@ class TestProlificHttpClient:
     
     @patch('requests.Session.request')
     def test_correlation_id_injection(self, mock_request, client):
-        """Test correlation ID is added to requests."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {}

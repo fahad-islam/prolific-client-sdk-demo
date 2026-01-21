@@ -26,29 +26,24 @@ from prolific_client.errors import (
 
 
 def print_header(text: str):
-    """Print a formatted header."""
     print("\n" + "=" * 70)
     print(f"  {text}")
     print("=" * 70)
 
 
 def print_success(text: str):
-    """Print success message."""
     print(f"✓ {text}")
 
 
 def print_error(text: str):
-    """Print error message."""
     print(f"✗ {text}")
 
 
 def print_info(text: str):
-    """Print info message."""
     print(f"  {text}")
 
 
 def test_configuration():
-    """Test configuration loading."""
     print_header("Test 1: Configuration Loading")
     
     try:
@@ -73,7 +68,6 @@ def test_configuration():
 
 
 def test_authentication(config: ProlificConfig):
-    """Test API authentication."""
     print_header("Test 2: API Authentication")
     
     try:
@@ -107,7 +101,6 @@ def test_authentication(config: ProlificConfig):
 
 
 def test_error_handling(client: ProlificHttpClient):
-    """Test error handling with invalid request."""
     print_header("Test 3: Error Handling")
     
     try:
@@ -128,7 +121,6 @@ def test_error_handling(client: ProlificHttpClient):
 
 
 def test_retry_logic(client: ProlificHttpClient):
-    """Test retry logic (informational only)."""
     print_header("Test 4: Retry Logic")
     
     print_info("Retry logic is configured with:")
@@ -142,7 +134,6 @@ def test_retry_logic(client: ProlificHttpClient):
 
 
 def main():
-    """Run all smoke tests."""
     print_header("Prolific API Client - Smoke Test")
     
     config = test_configuration()

@@ -7,13 +7,11 @@ from enum import Enum
 
 
 class FilterType(str, Enum):
-    """Filter input types."""
     SELECT = "select"
     RANGE = "range"
 
 
 class SelectFilterDataType(str, Enum):
-    """Data types for select filters."""
     CHOICE_ID = "ChoiceID"
     PARTICIPANT_ID = "ParticipantID"
     STUDY_ID = "StudyID"
@@ -21,18 +19,12 @@ class SelectFilterDataType(str, Enum):
 
 
 class RangeFilterDataType(str, Enum):
-    """Data types for range filters."""
     DATE = "date"
     INTEGER = "integer"
     FLOAT = "float"
 
 
 class SelectFilter(BaseModel):
-    """
-    Select-type filter (single or multi-select).
-    
-    Based on SelectFilterListResponse schema.
-    """
     filter_id: str = Field(..., description="Filter ID (slugified title)")
     title: str = Field(..., description="Filter title")
     description: str = Field(..., description="Filter description")
@@ -77,11 +69,6 @@ class SelectFilter(BaseModel):
 
 
 class RangeFilter(BaseModel):
-    """
-    Range-type filter (numeric or date range).
-    
-    Based on RangeFilterListResponse schema.
-    """
     filter_id: str = Field(..., description="Filter ID (slugified title)")
     title: str = Field(..., description="Filter title")
     description: str = Field(..., description="Filter description")
@@ -130,11 +117,6 @@ class RangeFilter(BaseModel):
 
 
 class GenericFilter(BaseModel):
-    """
-    Generic filter for handling edge cases in API responses.
-    
-    Some filters don't fit the strict select/range schemas.
-    """
     filter_id: str = Field(..., description="Filter ID")
     title: str = Field(..., description="Filter title")
     description: str = Field(..., description="Filter description")
@@ -161,11 +143,6 @@ ProlificFilter = Union[SelectFilter, RangeFilter, GenericFilter]
 
 
 class FilterDistributionDataPoint(BaseModel):
-    """
-    Single data point in filter distribution.
-    
-    Represents how many participants match a particular filter value.
-    """
     label: str = Field(..., description="Value label")
     value: Union[str, int, float] = Field(..., description="Filter value")
     count: int = Field(..., description="Number of participants with this value")
@@ -173,12 +150,6 @@ class FilterDistributionDataPoint(BaseModel):
 
 
 class FilterDistribution(BaseModel):
-    """
-    Distribution data for a filter.
-    
-    Based on GET /api/v1/filters/{filter_id}/distribution/
-    Shows how many participants match each possible value.
-    """
     filter_id: str = Field(..., description="Filter identifier")
     total_participants: int = Field(..., description="Total participants in pool")
     distribution: List[FilterDistributionDataPoint] = Field(
@@ -191,13 +162,6 @@ class FilterDistribution(BaseModel):
 
 
 class FilterValue(BaseModel):
-    """
-    A filter value specification for use in filter sets.
-    
-    Different filters use different value formats:
-    - SELECT: selected_values with list of choice IDs
-    - RANGE: range_value with min/max
-    """
     filter_id: Optional[str] = Field(None, description="ID of the filter being applied")
     
     selected_values: Optional[List[Union[str, int]]] = Field(
@@ -215,12 +179,6 @@ class FilterValue(BaseModel):
 
 
 class ProlificFilterSet(BaseModel):
-    """
-    Prolific filter set model.
-    
-    Represents a reusable collection of recruiting criteria.
-    Based on GET /api/v1/filter-sets/{filter_set_id}/
-    """
     id: str = Field(..., description="Unique filter set identifier")
     name: str = Field(..., description="Filter set name")
     workspace_id: str = Field(..., description="Workspace this filter set belongs to")
@@ -245,27 +203,6 @@ class ProlificFilterSet(BaseModel):
 
 
 class FilterSetCreateRequest(BaseModel):
-    """
-    Request model for creating a filter set.
-    
-    Based on POST /api/v1/filter-sets/
-    
-    Example:
-        {
-            "name": "US Adults 25-45",
-            "workspace_id": "workspace_id",
-            "filters": [
-                {
-                    "filter_id": "age_range_filter_id",
-                    "range_value": {"lower": 25, "upper": 45}
-                },
-                {
-                    "filter_id": "country_filter_id",
-                    "selected_values": ["US"]
-                }
-            ]
-        }
-    """
     name: Optional[str] = Field(
         None,
         description="Filter set name",
@@ -281,27 +218,10 @@ class FilterSetCreateRequest(BaseModel):
     )
     
     class Config:
-        extra = "forbid"  # Strict validation for creation
+        extra = "forbid" 
 
 
 class FilterSetUpdateRequest(BaseModel):
-    """
-    Request model for updating a filter set.
-    
-    Based on PATCH /api/v1/filter-sets/{filter_set_id}/
-    All fields are optional - only provided fields are updated.
-    
-    Example:
-        {
-            "name": "Updated Name",
-            "filters": [
-                {
-                    "filter_id": "age_range_filter_id",
-                    "range_value": {"lower": 30, "upper": 50}
-                }
-            ]
-        }
-    """
     name: Optional[str] = Field(
         None,
         description="New filter set name",
@@ -319,12 +239,6 @@ class FilterSetUpdateRequest(BaseModel):
 
 
 class FilterListResponse(BaseModel):
-    """
-    Response model for listing filters.
-    
-    Based on GET /api/v1/filters/?workspace_id={workspace_id}
-    Returns all available filters for a workspace.
-    """
     results: List[Union[SelectFilter, RangeFilter, GenericFilter]] = Field(
         default_factory=list,
         description="List of available filters (mix of select, range, and generic)"
@@ -335,12 +249,6 @@ class FilterListResponse(BaseModel):
 
 
 class FilterSetListResponse(BaseModel):
-    """
-    Response model for listing filter sets.
-    
-    Based on GET /api/v1/workspaces/{workspace_id}/filter-sets/
-    Returns all filter sets in a workspace.
-    """
     results: List[ProlificFilterSet] = Field(
         default_factory=list,
         description="List of filter sets in workspace"

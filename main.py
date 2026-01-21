@@ -22,9 +22,10 @@ def main():
     client = ProlificHttpClient(config)
     
     try:
-        response = filters.list_filters(
+        response = studies.find_study_by_name(
             client=client,
-            workspace_id=workspace_id,
+            # workspace_id=workspace_id,
+            name="ango_test_study_001"
         )
 
         print("Study created successfully!")

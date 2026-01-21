@@ -5,15 +5,6 @@ from typing import Optional, Dict, Any
 
 
 class ProlificAPIError(Exception):
-    """
-    Base exception for Prolific API errors.
-    
-    Attributes:
-        status_code: HTTP status code
-        message: Error message
-        payload: Optional response payload/body
-        correlation_id: Optional correlation ID for tracking
-    """
     
     def __init__(
         self,
@@ -42,28 +33,24 @@ class ProlificAPIError(Exception):
 
 
 class ProlificAuthenticationError(ProlificAPIError):
-    """Raised when authentication fails (401)."""
     
     def __init__(self, message: str = "Authentication failed", **kwargs):
         super().__init__(status_code=401, message=message, **kwargs)
 
 
 class ProlificAuthorizationError(ProlificAPIError):
-    """Raised when authorization fails (403)."""
     
     def __init__(self, message: str = "Access forbidden", **kwargs):
         super().__init__(status_code=403, message=message, **kwargs)
 
 
 class ProlificNotFoundError(ProlificAPIError):
-    """Raised when resource is not found (404)."""
     
     def __init__(self, message: str = "Resource not found", **kwargs):
         super().__init__(status_code=404, message=message, **kwargs)
 
 
 class ProlificRateLimitError(ProlificAPIError):
-    """Raised when rate limit is exceeded (429)."""
     
     def __init__(self, message: str = "Rate limit exceeded", retry_after: Optional[int] = None, **kwargs):
         super().__init__(status_code=429, message=message, **kwargs)
@@ -71,7 +58,6 @@ class ProlificRateLimitError(ProlificAPIError):
 
 
 class ProlificValidationError(ProlificAPIError):
-    """Raised when request validation fails (400, 422)."""
     
     def __init__(self, message: str = "Validation error", **kwargs):
         status_code = kwargs.pop('status_code', 400)
@@ -79,14 +65,12 @@ class ProlificValidationError(ProlificAPIError):
 
 
 class ProlificServerError(ProlificAPIError):
-    """Raised when server error occurs (5xx)."""
     
     def __init__(self, status_code: int = 500, message: str = "Server error", **kwargs):
         super().__init__(status_code=status_code, message=message, **kwargs)
 
 
 class ProlificConnectionError(Exception):
-    """Raised when connection to API fails."""
     
     def __init__(self, message: str = "Failed to connect to Prolific API", original_error: Optional[Exception] = None):
         self.original_error = original_error
@@ -94,7 +78,6 @@ class ProlificConnectionError(Exception):
 
 
 class ProlificTimeoutError(Exception):
-    """Raised when request times out."""
     
     def __init__(self, message: str = "Request timed out", timeout_s: Optional[int] = None):
         self.timeout_s = timeout_s
@@ -106,18 +89,7 @@ def create_error_from_response(
     response_data: Optional[Dict[str, Any]] = None,
     correlation_id: Optional[str] = None
 ) -> ProlificAPIError:
-    """
-    Create appropriate error instance based on status code.
     
-    Args:
-        status_code: HTTP status code
-        response_data: Response payload
-        correlation_id: Correlation ID for tracking
-    
-    Returns:
-        Appropriate ProlificAPIError subclass instance
-    """
-
     message = "Unknown error"
     
     if response_data:
