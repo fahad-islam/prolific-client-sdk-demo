@@ -1,16 +1,6 @@
 """
 API operations for Prolific filters and filter sets.
-
-Based on Prolific API documentation:
-- GET /api/v1/filters/?workspace_id={workspace_id}
-- GET /api/v1/filters/{filter_id}/distribution/?workspace_id={workspace_id}
-- GET /api/v1/workspaces/{workspace_id}/filter-sets/
-- GET /api/v1/filter-sets/{filter_set_id}/
-- POST /api/v1/filter-sets/
-- PATCH /api/v1/filter-sets/{filter_set_id}/
 """
-
-from pytest import param
 from typing import List, Dict, Any, Optional
 from ..http import ProlificHttpClient
 from ..models.filters import (
@@ -45,7 +35,6 @@ def list_filters(client: ProlificHttpClient, workspace_id: str) -> List[Prolific
     params = {"workspace_id": workspace_id}
     response = client.get("/api/v1/filters/", params=params)
 
-    # Parse response
     filter_response = FilterListResponse(**response)
     return filter_response.results
 
@@ -113,7 +102,6 @@ def list_filter_sets(
 
     response = client.get(f"/api/v1/filter-sets/", params=params)
 
-    # Parse response
     filter_set_response = FilterSetListResponse(**response)
     return filter_set_response.results
 
@@ -195,7 +183,6 @@ def create_filter_set(
         ... )
         >>> print(f"Created filter set: {filter_set.id} (v{filter_set.version})")
     """
-    # Validate payload
     request = FilterSetCreateRequest(
         name=name, workspace_id=workspace_id, filters=filters, organisation_id=organisation_id
     )
@@ -255,14 +242,12 @@ def patch_filter_set(
         ...     filters=new_filters
         ... )
     """
-    # Build update payload
     update_data = {}
     if name is not None:
         update_data["name"] = name
     if filters is not None:
         update_data["filters"] = filters
 
-    # Validate payload
     update_request = FilterSetUpdateRequest(**update_data)
 
     response = client.patch(
@@ -271,9 +256,6 @@ def patch_filter_set(
     )
 
     return ProlificFilterSet(**response)
-
-
-# Convenience methods
 
 
 def find_filter_set_by_name(
@@ -297,13 +279,11 @@ def find_filter_set_by_name(
     """
     filter_sets = list_filter_sets(client, workspace_id)
 
-    # Find all matching by name, return the one with highest version
     matches = [fs for fs in filter_sets if fs.name == name]
 
     if not matches:
         return None
 
-    # Return the latest version
     return max(matches, key=lambda fs: fs.version)
 
 
@@ -334,7 +314,6 @@ def estimate_participant_pool(
         >>> estimate = estimate_participant_pool(client, "ws_id", filters)
         >>> print(f"Estimated reach: {estimate} participants")
     """
-    # Create temporary filter set
     temp_name = f"_temp_estimate_{hash(str(filters))}"
     filter_set = create_filter_set(
         client=client, name=temp_name, workspace_id=workspace_id, filters=filters

@@ -1,13 +1,5 @@
 """
 Models for Prolific filters and filter sets.
-
-Based on Prolific API documentation:
-- GET /api/v1/filters/
-- GET /api/v1/filters/{filter_id}/distribution/
-- GET /api/v1/workspaces/{workspace_id}/filter-sets/
-- GET /api/v1/filter-sets/{filter_set_id}/
-- POST /api/v1/filter-sets/
-- PATCH /api/v1/filter-sets/{filter_set_id}/
 """
 from typing import Optional, List, Dict, Any, Union
 from pydantic import BaseModel, Field
@@ -55,7 +47,6 @@ class SelectFilter(BaseModel):
         description="Format of choice keys"
     )
     
-    # Detailed fields (when detailed=true)
     researcher_help_text: Optional[str] = Field(
         None,
         description="Help text for researchers"
@@ -109,7 +100,6 @@ class RangeFilter(BaseModel):
         description="Data type of the range (date, integer, or float)"
     )
     
-    # Detailed fields (when detailed=true)
     researcher_help_text: Optional[str] = Field(
         None,
         description="Help text for researchers"
@@ -139,7 +129,6 @@ class RangeFilter(BaseModel):
         extra = "allow"
 
 
-# Generic filter that accepts any structure (for when strict parsing fails)
 class GenericFilter(BaseModel):
     """
     Generic filter for handling edge cases in API responses.
@@ -150,15 +139,13 @@ class GenericFilter(BaseModel):
     title: str = Field(..., description="Filter title")
     description: str = Field(..., description="Filter description")
     type: str = Field(..., description="Filter type")
-    
-    # All other fields are optional
     question: Optional[str] = None
+    
     choices: Optional[Dict[str, Any]] = None
     data_type: Optional[str] = None
     min: Optional[Union[int, float, str]] = None
     max: Optional[Union[int, float, str]] = None
     
-    # Detailed fields
     researcher_help_text: Optional[str] = None
     participant_help_text: Optional[str] = None
     category: Optional[str] = None
@@ -170,7 +157,6 @@ class GenericFilter(BaseModel):
         extra = "allow"
 
 
-# Union type for any filter
 ProlificFilter = Union[SelectFilter, RangeFilter, GenericFilter]
 
 
@@ -214,13 +200,11 @@ class FilterValue(BaseModel):
     """
     filter_id: Optional[str] = Field(None, description="ID of the filter being applied")
     
-    # For select filters
     selected_values: Optional[List[Union[str, int]]] = Field(
         None,
         description="Selected choice IDs for select-type filters"
     )
     
-    # For range filters
     range_value: Optional[Dict[str, Union[int, float, str]]] = Field(
         None,
         description="Range specification with 'lower' and 'upper' keys"
@@ -241,20 +225,16 @@ class ProlificFilterSet(BaseModel):
     name: str = Field(..., description="Filter set name")
     workspace_id: str = Field(..., description="Workspace this filter set belongs to")
     
-    # Filters in this set
     filters: List[FilterValue] = Field(
         default_factory=list,
         description="List of filter values in this set"
     )
     
-    # Versioning
     version: int = Field(..., description="Filter set version number (increments on update)")
     
-    # Metadata
     created_at: str = Field(..., description="ISO 8601 creation timestamp")
     updated_at: Optional[str] = Field(None, description="ISO 8601 last update timestamp")
     
-    # Participant count estimate
     estimated_participants: Optional[int] = Field(
         None,
         description="Estimated number of participants matching these criteria"
@@ -370,7 +350,6 @@ class FilterSetListResponse(BaseModel):
         extra = "allow"
 
 
-# Type aliases for convenience
 FilterID = str
 FilterSetID = str
 WorkspaceID = str
