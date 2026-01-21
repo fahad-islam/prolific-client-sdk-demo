@@ -1,8 +1,9 @@
 """
 Models for Prolific projects.
 """
-from typing import Optional, List
-from pydantic import BaseModel, Field
+from prolific_client.models.user import User
+from typing import Optional, List, Any
+from pydantic import BaseModel, Field, EmailStr
 
 
 class ProlificProject(BaseModel):
@@ -26,22 +27,20 @@ class ProlificProject(BaseModel):
     id: str = Field(..., description="Unique project identifier")
     title: str = Field(..., description="Project title")
     description: Optional[str] = Field(None, description="Project description")
-    workspace: str = Field(..., description="Workspace ID this project belongs to")
-    owner: str = Field(..., description="Owner user ID")
+    workspace: Optional[str] = Field(None, description="Workspace ID this project belongs to")
+    owner: Optional[str] = Field(None, description="Owner user ID")
     
-    users: List[str] = Field(
+    users: Optional[List[Any]] = Field(
         default_factory=list,
         description="List of user IDs with access to the project"
     )
     
-    naivety_distribution_rate: Optional[int] = Field(
+    naivety_distribution_rate: Optional[float] = Field(
         None,
-        description="Naivety distribution rate (0-100)",
-        ge=0,
-        le=100
+        description="Naivety distribution rate (0-1)",
     )
     
-    created_at: str = Field(..., description="ISO 8601 creation timestamp")
+    created_at: Optional[str] = Field(None, description="ISO 8601 creation timestamp")
     updated_at: Optional[str] = Field(None, description="ISO 8601 last update timestamp")
     
     class Config:
@@ -107,11 +106,21 @@ class ProjectUpdateRequest(BaseModel):
         None,
         description="New project description"
     )
-    naivety_distribution_rate: Optional[int] = Field(
+    owner: Optional[str] = Field(
         None,
-        description="New naivety distribution rate (0-100)",
-        ge=0,
-        le=100
+        description="New project owner"
+    )
+    workspace: Optional[str] = Field(
+        None,
+        description="New project workspace"
+    )
+    users: Optional[List[User]] = Field(
+        None,
+        description="List of users to add to the project"
+    )
+    naivety_distribution_rate: Optional[float] = Field(
+        None,
+        description="New naivety distribution rate",
     )
     
     class Config:
@@ -132,7 +141,6 @@ class ProjectListResponse(BaseModel):
     
     class Config:
         extra = "allow"
-
 
 ProjectID = str
 WorkspaceID = str
